@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-arabic: 'Amiri', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #0c0d0e;
+    color: #e6e8eb;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #15171a;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b3038;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3e4450;
+}
+
+/* Arabic typography styling */
+.arabic-text {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  text-align: right;
+}
+
+/* OSMD Music Score Canvas Container */
+#osmdCanvasContainer {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  overflow: visible;
+}
+
+#osmdCanvasContainer svg {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Make OSMD cursor vivid and smooth */
+.osmd-cursor-active {
+  transition: transform 0.08s ease-out;
+}
+
+/* CodeMirror Editor tweaks */
+.cm-editor {
+  height: 100% !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.cm-scroller {
+  font-family: var(--font-mono) !important;
+}
+
+/* Printable Score Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #osmdCanvasContainer, #osmdCanvasContainer * {
+    visibility: visible;
+  }
+  #osmdCanvasContainer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+}

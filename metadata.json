@@ -1,0 +1,6 @@
+{
+  "name": "Nawa - Arabic MusicXML Score Editor",
+  "description": "Professional Arabic MusicXML score editor and quarter-tone playback studio for violin and maqam compositions with synchronized cursor, OSMD rendering, and audio export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
