@@ -17,7 +17,8 @@ import {
   FileMusic,
   Share2,
   FilePlus,
-  Key
+  Key,
+  Code2
 } from 'lucide-react';
 import { useScoreStore } from './store/useScoreStore';
 import { ScoreAudioEngine, parseMusicXmlNotes } from './lib/audioEngine';
@@ -31,6 +32,7 @@ import { ShortcutsHelpModal } from './components/ShortcutsHelpModal';
 import { MaqamSelectorModal } from './components/MaqamSelectorModal';
 import { NewDocumentModal } from './components/NewDocumentModal';
 import { KeySignatureModal } from './components/KeySignatureModal';
+import { MusicXmlReferenceModal } from './components/MusicXmlReferenceModal';
 import { ARABIC_MAQAMAT, generateMusicXmlNote } from './lib/arabicMusic';
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay';
 
@@ -68,6 +70,8 @@ export default function App() {
     setShowNewDocModal,
     showKeySignatureModal,
     setShowKeySignatureModal,
+    showXmlReference,
+    setShowXmlReference,
     activeMaqamId,
   } = useScoreStore();
 
@@ -196,6 +200,25 @@ export default function App() {
     setTimeout(handleForceRender, 60);
   }, [xmlContent, setXmlContent, handleForceRender]);
 
+  // Insert XML snippet from reference guide
+  const handleInsertXmlSnippet = useCallback((snippet: string) => {
+    const lines = xmlContent.split('\n');
+    let measureEndIdx = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lines[i].includes('</measure>')) {
+        measureEndIdx = i;
+        break;
+      }
+    }
+    if (measureEndIdx !== -1) {
+      lines.splice(measureEndIdx, 0, snippet);
+      setXmlContent(lines.join('\n'));
+    } else {
+      setXmlContent(xmlContent + '\n' + snippet);
+    }
+    setTimeout(handleForceRender, 60);
+  }, [xmlContent, setXmlContent, handleForceRender]);
+
   // Global Keyboard Shortcuts Registry
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -207,6 +230,7 @@ export default function App() {
       if (e.key === 'Escape') {
         if (showNewDocModal) { setShowNewDocModal(false); return; }
         if (showKeySignatureModal) { setShowKeySignatureModal(false); return; }
+        if (showXmlReference) { setShowXmlReference(false); return; }
         if (showViolinGuide) { setShowViolinGuide(false); return; }
         if (showShortcuts) { setShowShortcuts(false); return; }
         if (showExportModal) { setShowExportModal(false); return; }
@@ -322,6 +346,8 @@ export default function App() {
     setShowNewDocModal,
     showKeySignatureModal,
     setShowKeySignatureModal,
+    showXmlReference,
+    setShowXmlReference,
   ]);
 
   return (
@@ -366,6 +392,16 @@ export default function App() {
 
           <button
             type="button"
+            onClick={() => setShowXmlReference(true)}
+            title="MusicXML Tags & Attributes Reference Guide"
+            className="hover:text-amber-300 transition-colors flex items-center gap-1.5"
+          >
+            <Code2 className="w-3.5 h-3.5 text-neutral-400 hover:text-amber-400" />
+            <span>XML Guide</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowMaqamSelector(true)}
             className="hover:text-amber-300 transition-colors flex items-center gap-1.5"
           >
@@ -379,7 +415,7 @@ export default function App() {
             className="hover:text-amber-300 transition-colors flex items-center gap-1.5"
           >
             <BookOpen className="w-3.5 h-3.5 text-neutral-400 hover:text-amber-400" />
-            <span>Violin Fingerboard (G3 D4 A4 E5)</span>
+            <span>Violin Fingerboard</span>
           </button>
 
           <button
@@ -520,6 +556,13 @@ export default function App() {
         <KeySignatureModal
           onClose={() => setShowKeySignatureModal(false)}
           onKeyApplied={handleForceRender}
+        />
+      )}
+
+      {showXmlReference && (
+        <MusicXmlReferenceModal
+          onClose={() => setShowXmlReference(false)}
+          onInsertSnippet={handleInsertXmlSnippet}
         />
       )}
     </div>

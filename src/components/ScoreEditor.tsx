@@ -12,7 +12,8 @@ import {
   FileText,
   RotateCcw,
   FilePlus,
-  Key
+  Key,
+  BookOpen
 } from 'lucide-react';
 import { useScoreStore } from '../store/useScoreStore';
 import { extractMusicXmlFromFile } from '../lib/mxlParser';
@@ -32,6 +33,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
     loadSampleScore,
     setShowNewDocModal,
     setShowKeySignatureModal,
+    setShowXmlReference,
   } = useScoreStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -242,6 +244,17 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
           >
             <Key className="w-3.5 h-3.5 text-amber-400" />
             <span>Key Sig</span>
+          </button>
+
+          {/* MusicXML Tags Reference Guide */}
+          <button
+            type="button"
+            onClick={() => setShowXmlReference(true)}
+            title="MusicXML Tags & Attributes Reference Guide"
+            className="flex items-center gap-1.5 px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition-colors font-sans"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span>XML Guide</span>
           </button>
 
           <label htmlFor="sample-preset-select" className="text-neutral-400 font-sans text-xs ml-1">

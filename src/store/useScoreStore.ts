@@ -32,6 +32,7 @@ interface ScoreStoreState {
   showMaqamSelector: boolean;
   showNewDocModal: boolean;
   showKeySignatureModal: boolean;
+  showXmlReference: boolean;
   activeMaqamId: string;
 
   // Actions
@@ -59,6 +60,7 @@ interface ScoreStoreState {
   setShowMaqamSelector: (show: boolean) => void;
   setShowNewDocModal: (show: boolean) => void;
   setShowKeySignatureModal: (show: boolean) => void;
+  setShowXmlReference: (show: boolean) => void;
   setActiveMaqamId: (id: string) => void;
 }
 
@@ -96,6 +98,7 @@ export const useScoreStore = create<ScoreStoreState>((set, get) => ({
   showMaqamSelector: false,
   showNewDocModal: false,
   showKeySignatureModal: false,
+  showXmlReference: false,
   activeMaqamId: 'rast',
 
   setXmlContent: (xml) => {
@@ -149,5 +152,6 @@ export const useScoreStore = create<ScoreStoreState>((set, get) => ({
   setShowMaqamSelector: (showMaqamSelector) => set({ showMaqamSelector }),
   setShowNewDocModal: (showNewDocModal) => set({ showNewDocModal }),
   setShowKeySignatureModal: (showKeySignatureModal) => set({ showKeySignatureModal }),
+  setShowXmlReference: (showXmlReference) => set({ showXmlReference }),
   setActiveMaqamId: (activeMaqamId) => set({ activeMaqamId }),
 }));
