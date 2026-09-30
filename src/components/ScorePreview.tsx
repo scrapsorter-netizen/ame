@@ -116,7 +116,7 @@ export const ScorePreview: React.FC<ScorePreviewProps> = ({ osmdRefExternal }) =
         lastValidXmlRef.current = xmlToRender;
         setRenderCount((prev) => prev + 1);
       } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'XML rendering error';
+        const errorMsg = err instanceof Error ? err.message : 'XML rendering error. Please check your MusicXML syntax.';
         console.warn('OSMD render warning:', errorMsg);
         setParseError(errorMsg);
         // Note: We keep the last valid score rendered on screen as specified in the plan!

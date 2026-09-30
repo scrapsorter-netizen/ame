@@ -19,7 +19,7 @@ export function parseMusicXmlNotes(xmlText: string, userTempo?: number): {
   // Check for parse error
   const parserError = xmlDoc.querySelector('parsererror');
   if (parserError) {
-    throw new Error(parserError.textContent || 'XML parsing error');
+    throw new Error(parserError.textContent || 'Invalid MusicXML format. Please check your XML syntax.');
   }
 
   let tempo = userTempo || 92;
@@ -100,7 +100,7 @@ export function parseMusicXmlNotes(xmlText: string, userTempo?: number): {
         return;
       }
 
-      const step = stepEl.textContent?.trim().toUpperCase() || 'C';
+      const step = (stepEl.textContent?.trim().toUpperCase() || 'C') as 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B';
       const octave = parseInt(octEl.textContent || '4', 10);
       const alter = alterEl && alterEl.textContent ? parseFloat(alterEl.textContent) : 0;
       const accidental = accidentalEl?.textContent?.trim();
@@ -456,7 +456,7 @@ export async function renderScoreToWavBlob(
   instrument: InstrumentType
 ): Promise<Blob> {
   if (events.length === 0) {
-    throw new Error('Score contains no notes to render.');
+    throw new Error('Score contains no notes to render. Please add notes to your score first.');
   }
 
   const lastNote = events[events.length - 1];

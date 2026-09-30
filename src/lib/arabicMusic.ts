@@ -28,12 +28,12 @@ const STEP_TO_SEMITONE: Record<string, number> = {
  * Calculate frequency in Hz for standard 12-TET with fractional quarter-tone alter (±0.5 = ±50 cents).
  */
 export function calculatePitchFrequency(
-  step: string,
+  step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B',
   octave: number,
   alter = 0,
   a4Ref = 440
 ): number {
-  const stepVal = STEP_TO_SEMITONE[step.toUpperCase()] ?? 0;
+  const stepVal = STEP_TO_SEMITONE[step] ?? 0;
   // MIDI number: C4 is 60, A4 is 69
   const baseMidi = (octave + 1) * 12 + stepVal;
   const fractionalMidi = baseMidi + alter;
@@ -59,11 +59,11 @@ export function getAccidentalGlyph(alter: number): string {
  * Assumes 1st position primarily.
  */
 export function getViolinPosition(
-  step: string,
+  step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B',
   octave: number,
   alter = 0
 ): { string: 'G' | 'D' | 'A' | 'E'; finger: string; description: string } {
-  const stepVal = STEP_TO_SEMITONE[step.toUpperCase()] ?? 0;
+  const stepVal = STEP_TO_SEMITONE[step] ?? 0;
   const midi = (octave + 1) * 12 + stepVal + alter;
 
   // 1st string: E5 (76) and above
@@ -273,7 +273,7 @@ export const ARABIC_MAQAMAT: Maqam[] = [
  * Generate standard MusicXML note XML snippet with proper quarter tone alter tags.
  */
 export function generateMusicXmlNote(
-  step: string,
+  step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B',
   octave: number,
   alter: number,
   duration = 1,
@@ -288,7 +288,7 @@ export function generateMusicXmlNote(
 
   return `    <note>
       <pitch>
-        <step>${step.toUpperCase()}</step>${alterTag}
+        <step>${step}</step>${alterTag}
         <octave>${octave}</octave>
       </pitch>
       <duration>${duration}</duration>

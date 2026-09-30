@@ -94,7 +94,7 @@ export default function App() {
       // preview will show error
     }
     setRenderTrigger((prev) => prev + 1);
-  }, [xmlContent, tempo, setParsedEvents]);
+  }, [xmlContent, tempo, setParsedEvents, setRenderTrigger]);
 
   // Sync Audio Engine settings
   useEffect(() => {

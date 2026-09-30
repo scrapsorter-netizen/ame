@@ -51,7 +51,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
       setXmlContent(extractedXml);
       onForceRender();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to parse file';
+      const msg = err instanceof Error ? err.message : 'Failed to parse file. Please ensure it is a valid MusicXML or .mxl file.';
       setFileError(msg);
     } finally {
       setLoadingFile(false);

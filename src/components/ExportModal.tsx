@@ -53,7 +53,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       triggerDownload(blob, `${baseFileName}.mxl`);
       setSuccessMsg('Exported compressed .mxl container successfully!');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to export .mxl');
+      setSuccessMsg(err instanceof Error ? err.message : 'Failed to export .mxl');
     } finally {
       setExportingType(null);
     }
@@ -64,7 +64,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     const container = document.getElementById('osmdCanvasContainer');
     const svgEl = container?.querySelector('svg');
     if (!svgEl) {
-      alert('Score SVG has not finished rendering yet.');
+      setSuccessMsg('Score SVG has not finished rendering yet. Please wait.');
       return;
     }
     const serializer = new XMLSerializer();
@@ -79,7 +79,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
     const container = document.getElementById('osmdCanvasContainer');
     const svgEl = container?.querySelector('svg');
     if (!svgEl) {
-      alert('Score SVG has not finished rendering yet.');
+      setSuccessMsg('Score SVG has not finished rendering yet. Please wait.');
       return;
     }
 
@@ -111,7 +111,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       }
     };
     img.onerror = () => {
-      alert('Failed to rasterize SVG to PNG.');
+      setSuccessMsg('Failed to rasterize SVG to PNG. Please try again.');
       URL.revokeObjectURL(url);
       setExportingType(null);
     };
@@ -131,7 +131,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       triggerDownload(blob, `${baseFileName}.wav`);
       setSuccessMsg('Exported 16-bit PCM WAV audio successfully!');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to render WAV audio.');
+      setSuccessMsg(err instanceof Error ? err.message : 'Failed to render WAV audio.');
     } finally {
       setExportingType(null);
     }
@@ -144,7 +144,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ onClose }) => {
       triggerDownload(blob, `${baseFileName}.mid`);
       setSuccessMsg('Exported standard MIDI file with quarter-tone pitch bends!');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to export MIDI.');
+      setSuccessMsg(err instanceof Error ? err.message : 'Failed to export MIDI.');
     }
   };
 

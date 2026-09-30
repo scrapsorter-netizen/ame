@@ -47,7 +47,7 @@ export interface ParsedNoteEvent {
   beat: number;
   timeInSeconds: number;
   durationSeconds: number;
-  step: string;
+  step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B';
   octave: number;
   alter: number; // -0.5 for quarter flat, 0.5 for quarter sharp, etc.
   frequency: number;

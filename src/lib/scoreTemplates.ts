@@ -332,7 +332,7 @@ export function updateKeySignatureInXml(xmlText: string, keyConfig: KeyConfig): 
   const doc = parser.parseFromString(xmlText, 'text/xml');
 
   if (doc.querySelector('parsererror')) {
-    throw new Error('Cannot update key signature: existing MusicXML is malformed.');
+    throw new Error('Cannot update key signature: existing MusicXML is malformed. Please check your XML syntax.');
   }
 
   const targetMeasureNum = keyConfig.measureNumber || 1;
