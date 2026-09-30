@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   Play, 
   Pause, 
@@ -11,7 +11,8 @@ import {
   Radio, 
   Gauge, 
   FastForward,
-  Music2
+  Music2,
+  Activity
 } from 'lucide-react';
 import { useScoreStore } from '../store/useScoreStore';
 import { InstrumentType } from '../types';
@@ -50,6 +51,24 @@ export const TransportBar: React.FC<TransportBarProps> = ({
 
   const [isMuted, setIsMuted] = useState(false);
   const prevVolumeRef = useRef(volume);
+
+  // Measure markers computation for scrubber
+  const measureMarkers = useMemo(() => {
+    if (!parsedEvents || parsedEvents.length === 0 || totalDurationSeconds <= 0) return [];
+    const measureMap = new Map<number, number>();
+    parsedEvents.forEach((ev) => {
+      if (!measureMap.has(ev.measure)) {
+        measureMap.set(ev.measure, ev.timeInSeconds);
+      }
+    });
+
+    return Array.from(measureMap.entries()).map(([measureNum, timeSec]) => ({
+      measure: measureNum,
+      percent: Math.min(100, Math.max(0, (timeSec / totalDurationSeconds) * 100)),
+    }));
+  }, [parsedEvents, totalDurationSeconds]);
+
+  const currentEvent = parsedEvents[currentEventIndex];
 
   // Tap tempo state
   const tapTimesRef = useRef<number[]>([]);
@@ -164,32 +183,57 @@ export const TransportBar: React.FC<TransportBarProps> = ({
             <Timer className="w-4 h-4" />
           </button>
 
-          {/* Time Counter */}
-          <div className="flex items-baseline gap-1 font-mono text-xs text-neutral-300 bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1.5 tabular-nums">
+          {/* Time Counter & Measure Indicator */}
+          <div className="flex items-center gap-2 font-mono text-xs text-neutral-300 bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1.5 tabular-nums">
             <span className="text-amber-400">{formatTime(playbackProgressSeconds)}</span>
-            <span className="text-neutral-500">/</span>
+            <span className="text-neutral-600">/</span>
             <span className="text-neutral-400">{formatTime(totalDurationSeconds)}</span>
+            {currentEvent && (
+              <>
+                <span className="text-neutral-600">·</span>
+                <span className="text-amber-300 font-sans text-[11px]">
+                  M{currentEvent.measure}:B{currentEvent.beat}
+                </span>
+              </>
+            )}
           </div>
+
+          {/* Active Audio Waveform Equalizer animation */}
+          {isPlaying && (
+            <div className="hidden md:flex items-center gap-0.5 px-2 py-1 rounded bg-amber-950/40 border border-amber-500/30">
+              <span className="w-1 h-3 bg-amber-400 rounded-full animate-pulse" />
+              <span className="w-1 h-5 bg-amber-400 rounded-full animate-bounce" />
+              <span className="w-1 h-2 bg-amber-400 rounded-full animate-pulse" />
+              <span className="w-1 h-4 bg-amber-400 rounded-full animate-bounce" />
+            </div>
+          )}
         </div>
 
-        {/* Middle: Instrument sound & Violin tuning preset */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="instrument-select" className="text-neutral-400 text-xs font-sans flex items-center gap-1.5">
-            <Music2 className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Voice:</span>
-          </label>
-          <select
-            id="instrument-select"
-            value={instrument}
-            onChange={(e) => setInstrument(e.target.value as InstrumentType)}
-            className="bg-neutral-900 border border-neutral-700 rounded-md px-2.5 py-1 text-xs text-neutral-200 focus:outline-none focus:border-amber-500"
-          >
-            <option value="violin_bowed">Warm Bowed Violin (كمان مصقول)</option>
-            <option value="violin_pizz">Pizzicato Violin (كمان نقر)</option>
-            <option value="oud">Classical Oud (عود شرقي)</option>
-            <option value="nay_flute">Nay Flute (ناي)</option>
-            <option value="acoustic_grand">Acoustic Piano (بيانو)</option>
-          </select>
+        {/* Center: Sound Timbre Selector */}
+        <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-lg p-1">
+          {(
+            [
+              { id: 'violin_bowed', label: 'Violin Bowed (كمان)', short: 'Violin' },
+              { id: 'violin_pizz', label: 'Violin Pizz (نقر)', short: 'Pizz' },
+              { id: 'oud', label: 'Arabic Oud (عود)', short: 'Oud' },
+              { id: 'nay_flute', label: 'Nay Flute (ناي)', short: 'Nay' },
+              { id: 'acoustic_grand', label: 'Piano (بيانو)', short: 'Piano' },
+            ] as { id: InstrumentType; label: string; short: string }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setInstrument(item.id)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                instrument === item.id
+                  ? 'bg-amber-500 text-neutral-950 shadow-sm font-semibold'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+              }`}
+              title={item.label}
+            >
+              {item.short}
+            </button>
+          ))}
         </div>
 
         {/* Right: Tempo controls & Volume */}
@@ -246,17 +290,28 @@ export const TransportBar: React.FC<TransportBarProps> = ({
         </div>
       </div>
 
-      {/* Scrubbable Timeline Track */}
+      {/* Scrubbable Timeline Track with Measure Markers */}
       <div
         onClick={handleTimelineClick}
         title="Click to seek position in score"
-        className="relative w-full h-1.5 bg-neutral-800 hover:h-2 rounded-full cursor-pointer transition-all overflow-hidden group"
+        className="relative w-full h-2 bg-neutral-800 hover:h-2.5 rounded-full cursor-pointer transition-all overflow-hidden group select-none"
       >
+        {/* Measure boundary tick lines */}
+        {measureMarkers.map((m) => (
+          <div
+            key={m.measure}
+            className="absolute top-0 bottom-0 w-[1px] bg-neutral-700/60 pointer-events-none z-10"
+            style={{ left: `${m.percent}%` }}
+            title={`Measure ${m.measure}`}
+          />
+        ))}
+
+        {/* Active playback fill bar */}
         <div
-          className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-75 relative"
+          className="h-full bg-gradient-to-r from-amber-600 via-amber-500 to-amber-400 transition-all duration-75 relative z-20"
           style={{ width: `${playbackPercent}%` }}
         >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
     </div>

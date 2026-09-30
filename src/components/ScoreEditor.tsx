@@ -11,20 +11,25 @@ import {
   Check, 
   FileText,
   RotateCcw,
+  RotateCw,
   FilePlus,
   Key,
-  BookOpen
+  BookOpen,
+  ArrowUpDown,
+  Wand2
 } from 'lucide-react';
 import { useScoreStore } from '../store/useScoreStore';
 import { extractMusicXmlFromFile } from '../lib/mxlParser';
 import { SAMPLE_SCORES } from '../lib/sampleScores';
 import { getCurrentKeySignatureFromXml } from '../lib/scoreTemplates';
+import { formatMusicXml } from '../lib/xmlFormatter';
 
 interface ScoreEditorProps {
   onForceRender: () => void;
+  onOpenTranspose?: () => void;
 }
 
-export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
+export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender, onOpenTranspose }) => {
   const {
     xmlContent,
     setXmlContent,
@@ -178,6 +183,33 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
     </measure>`);
   };
 
+  const insertHalfFlatA = () => {
+    insertSnippet(`      <!-- A half-flat (quarter-flat -0.5, Ushshaq/Bayati on G) -->
+      <note>
+        <pitch>
+          <step>A</step>
+          <alter>-0.5</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>2</duration>
+        <type>quarter</type>
+        <accidental>slash-flat</accidental>
+      </note>`);
+  };
+
+  const [justFormatted, setJustFormatted] = useState(false);
+  const handleFormatCode = () => {
+    try {
+      const formatted = formatMusicXml(xmlContent);
+      setXmlContent(formatted);
+      setJustFormatted(true);
+      setTimeout(() => setJustFormatted(false), 1200);
+      onForceRender();
+    } catch {
+      // ignore
+    }
+  };
+
   const resetToSample = (scoreId: string) => {
     loadSampleScore(scoreId);
     setTimeout(onForceRender, 50);
@@ -185,6 +217,20 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
 
   const lineCount = xmlContent.split('\n').length;
   const charCount = xmlContent.length;
+
+  const [isReRendering, setIsReRendering] = useState(false);
+  const [renderedSuccess, setRenderedSuccess] = useState(false);
+
+  const handleReRender = async () => {
+    setIsReRendering(true);
+    try {
+      onForceRender();
+      setRenderedSuccess(true);
+      setTimeout(() => setRenderedSuccess(false), 1200);
+    } finally {
+      setTimeout(() => setIsReRendering(false), 250);
+    }
+  };
 
   const currentKey = useMemo(() => {
     try {
@@ -272,6 +318,31 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
               </option>
             ))}
           </select>
+
+          {/* Code Quality Actions */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleFormatCode}
+              title="Auto-format and indent MusicXML code"
+              className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-xs transition-colors font-sans"
+            >
+              <Wand2 className={`w-3 h-3 ${justFormatted ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <span>{justFormatted ? 'Formatted ✓' : 'Format XML'}</span>
+            </button>
+
+            {onOpenTranspose && (
+              <button
+                type="button"
+                onClick={onOpenTranspose}
+                title="Transpose Score by semitones or quarter-tones"
+                className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-xs transition-colors font-sans"
+              >
+                <ArrowUpDown className="w-3 h-3 text-amber-400" />
+                <span>Transpose</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Snippet Insertion buttons */}
@@ -294,6 +365,15 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
             className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-amber-900/40 text-amber-300 border border-neutral-700 text-xs transition-colors"
           >
             + B𝄳 <span className="text-[10px] text-neutral-400">(أوج)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={insertHalfFlatA}
+            title="Insert A𝄳 quarter-flat (Ushshaq/Bayati note, alter -0.5)"
+            className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-amber-900/40 text-amber-300 border border-neutral-700 text-xs transition-colors"
+          >
+            + A𝄳 <span className="text-[10px] text-neutral-400">(عشاق)</span>
           </button>
 
           <button
@@ -398,11 +478,19 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender }) => {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onForceRender}
+            onClick={handleReRender}
+            disabled={isReRendering}
             title="Force re-render score (Cmd+Enter)"
-            className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
+              renderedSuccess
+                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/70 shadow-sm'
+                : isReRendering
+                ? 'bg-amber-950/80 text-amber-300 border border-amber-500/70'
+                : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white border border-neutral-700'
+            }`}
           >
-            Re-render (⌘↵)
+            <RotateCw className={`w-3.5 h-3.5 ${isReRendering ? 'animate-spin text-amber-400' : renderedSuccess ? 'text-emerald-400' : 'text-amber-400'}`} />
+            <span>{isReRendering ? 'Rendering...' : renderedSuccess ? 'Rendered ✓' : 'Re-render (⌘↵)'}</span>
           </button>
         </div>
       </div>
