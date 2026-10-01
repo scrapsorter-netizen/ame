@@ -457,6 +457,7 @@ export default function App() {
         onPause={handlePause}
         onStop={handleStop}
         onSeekPercent={handleSeekPercent}
+        audioEngine={audioEngine}
       />
 
       {/* 3. MAIN WORKSPACE: TWO EXPANDABLE CARDS SIDE-BY-SIDE */}

@@ -319,11 +319,31 @@ export class ScoreAudioEngine {
   /**
    * Play a single preview note (e.g. from Maqam inspector or editor click)
    */
-  public async playSingleNote(step: string, octave: number, alter = 0, duration = 0.5): Promise<void> {
+  public async playSingleNote(step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B', octave: number, alter = 0, duration = 0.5): Promise<void> {
     await this.initialize();
     if (!this.synth) return;
     const freq = calculatePitchFrequency(step, octave, alter, 440);
     this.synth.triggerAttackRelease(freq, duration);
+  }
+
+  /**
+   * Trigger note attack from an external MIDI keyboard (0-127)
+   */
+  public async triggerMidiNoteOn(midiNumber: number, velocity = 100): Promise<void> {
+    await this.initialize();
+    if (!this.synth) return;
+    const freq = 440 * Math.pow(2, (midiNumber - 69) / 12);
+    const velNorm = Math.max(0.1, Math.min(1.0, velocity / 127));
+    this.synth.triggerAttack(freq, undefined, velNorm);
+  }
+
+  /**
+   * Trigger note release from an external MIDI keyboard
+   */
+  public triggerMidiNoteOff(midiNumber: number): void {
+    if (!this.synth) return;
+    const freq = 440 * Math.pow(2, (midiNumber - 69) / 12);
+    this.synth.triggerRelease(freq);
   }
 
   /**

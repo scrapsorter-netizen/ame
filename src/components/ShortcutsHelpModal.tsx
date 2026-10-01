@@ -18,6 +18,7 @@ export const SHORTCUTS_REGISTRY: KeyboardShortcut[] = [
   { key: '⌘ / Ctrl + Enter', label: 'Force Re-render', description: 'Re-parse MusicXML and redraw the score canvas', category: 'Editor' },
   { key: '⌘ / Ctrl + O', label: 'Open File', description: 'Open local .musicxml, .xml, or .mxl archive', category: 'Editor' },
   { key: '⌘ / Ctrl + S', label: 'Export Menu', description: 'Open export modal for sheet music, WAV, or MIDI', category: 'Editor' },
+  { key: '½x / 2x', label: 'Duration Multiplier', description: 'Highlight notes in editor to instantly halve, double, or scale lengths', category: 'Editor' },
   { key: '?', label: 'Shortcuts Help', description: 'Display this keyboard shortcuts reference sheet', category: 'View' },
 ];
 

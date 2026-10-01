@@ -5,7 +5,7 @@ import { calculatePitchFrequency, getAccidentalGlyph } from '../lib/arabicMusic'
 
 interface ViolinFingerboardStripProps {
   currentNote?: ParsedNoteEvent | null;
-  onPlayNote?: (step: string, octave: number, alter: number) => void;
+  onPlayNote?: (step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B', octave: number, alter: number) => void;
   isOpen: boolean;
   onToggle: () => void;
 }
@@ -13,7 +13,7 @@ interface ViolinFingerboardStripProps {
 interface FingerPosition {
   label: string;
   finger: string;
-  step: string;
+  step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B';
   octave: number;
   alter: number;
   isQuarterTone?: boolean;
@@ -25,7 +25,7 @@ const STRINGS_DATA: {
   id: 'E' | 'A' | 'D' | 'G';
   name: string;
   arabicName: string;
-  openNote: { step: string; octave: number; alter: number };
+  openNote: { step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B'; octave: number; alter: number };
   positions: FingerPosition[];
 }[] = [
   {

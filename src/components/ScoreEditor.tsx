@@ -16,13 +16,18 @@ import {
   Key,
   BookOpen,
   ArrowUpDown,
-  Wand2
+  Wand2,
+  Clock,
+  Scale
 } from 'lucide-react';
+import { EditorView } from '@codemirror/view';
 import { useScoreStore } from '../store/useScoreStore';
 import { extractMusicXmlFromFile } from '../lib/mxlParser';
 import { SAMPLE_SCORES } from '../lib/sampleScores';
 import { getCurrentKeySignatureFromXml } from '../lib/scoreTemplates';
 import { formatMusicXml } from '../lib/xmlFormatter';
+import { DurationMultiplierModal } from './DurationMultiplierModal';
+import { scaleSnippetDuration } from '../lib/durationMultiplier';
 
 interface ScoreEditorProps {
   onForceRender: () => void;
@@ -240,6 +245,64 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender, onOpenT
     }
   }, [xmlContent]);
 
+  // CodeMirror selection tracking for multiple note duration operations
+  const editorViewRef = useRef<EditorView | null>(null);
+  const [selectedSnippet, setSelectedSnippet] = useState<string>('');
+  const [selectedNoteCount, setSelectedNoteCount] = useState<number>(0);
+  const [showDurationModal, setShowDurationModal] = useState<boolean>(false);
+  const [durationSuccessFeedback, setDurationSuccessFeedback] = useState<string | null>(null);
+
+  const selectionExtension = useMemo(() => {
+    return EditorView.updateListener.of((update) => {
+      if (update.selectionSet || update.docChanged) {
+        const from = update.state.selection.main.from;
+        const to = update.state.selection.main.to;
+        if (from !== to) {
+          const text = update.state.sliceDoc(from, to);
+          setSelectedSnippet(text);
+          const noteCount = (text.match(/<note[\s>]/g) || []).length;
+          setSelectedNoteCount(noteCount);
+        } else {
+          setSelectedSnippet('');
+          setSelectedNoteCount(0);
+        }
+      }
+    });
+  }, []);
+
+  const handleReplaceSelection = useCallback(
+    (newText: string) => {
+      if (editorViewRef.current) {
+        const { from, to } = editorViewRef.current.state.selection.main;
+        if (from !== to) {
+          editorViewRef.current.dispatch({
+            changes: { from, to, insert: newText },
+          });
+          const updatedDoc = editorViewRef.current.state.doc.toString();
+          setXmlContent(updatedDoc);
+          setTimeout(onForceRender, 50);
+          return;
+        }
+      }
+      if (selectedSnippet) {
+        setXmlContent(xmlContent.replace(selectedSnippet, newText));
+        setTimeout(onForceRender, 50);
+      }
+    },
+    [selectedSnippet, xmlContent, setXmlContent, onForceRender]
+  );
+
+  const handleQuickScale = (multiplier: number) => {
+    if (selectedSnippet && selectedNoteCount > 0) {
+      const { resultXml, notesCount } = scaleSnippetDuration(selectedSnippet, multiplier);
+      handleReplaceSelection(resultXml);
+      setDurationSuccessFeedback(`Scaled ${notesCount} note(s) by ${multiplier}x!`);
+      setTimeout(() => setDurationSuccessFeedback(null), 1800);
+    } else {
+      setShowDurationModal(true);
+    }
+  };
+
   return (
     <div
       onDrop={handleDrop}
@@ -342,8 +405,57 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender, onOpenT
                 <span>Transpose</span>
               </button>
             )}
+
+            {/* Note Duration Multiplier tool */}
+            <button
+              type="button"
+              onClick={() => setShowDurationModal(true)}
+              title="Apply duration multiplier (½x halving, 2x doubling, time signature adjustments)"
+              className="flex items-center gap-1 px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 text-xs transition-colors font-sans"
+            >
+              <Clock className="w-3 h-3 text-amber-400" />
+              <span>Duration (½x / 2x)</span>
+            </button>
           </div>
         </div>
+
+        {/* Selection Duration Actions Bar */}
+        {selectedNoteCount > 0 ? (
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-amber-950/80 border border-amber-500/60 text-amber-200 text-xs animate-in fade-in shrink-0">
+            <span className="font-semibold text-[11px] font-sans text-amber-300">
+              {selectedNoteCount} note{selectedNoteCount > 1 ? 's' : ''} selected:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleQuickScale(0.5)}
+              title="Halve selected note durations (0.5x, e.g. quarters to eighths)"
+              className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs transition-all active:scale-95 shadow-sm"
+            >
+              ½x Halve
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickScale(2.0)}
+              title="Double selected note durations (2x, e.g. eighths to quarters)"
+              className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs transition-all active:scale-95 shadow-sm"
+            >
+              2x Double
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDurationModal(true)}
+              title="Open full duration multiplier options"
+              className="px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs transition-colors font-sans"
+            >
+              Custom...
+            </button>
+          </div>
+        ) : durationSuccessFeedback ? (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-950/80 border border-emerald-500/70 text-emerald-300 text-xs animate-in fade-in font-sans shrink-0">
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{durationSuccessFeedback}</span>
+          </div>
+        ) : null}
 
         {/* Snippet Insertion buttons */}
         <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
@@ -427,7 +539,10 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender, onOpenT
           value={xmlContent}
           height="100%"
           theme="dark"
-          extensions={[xml()]}
+          extensions={[xml(), selectionExtension]}
+          onCreateEditor={(view) => {
+            editorViewRef.current = view;
+          }}
           onChange={(val) => setXmlContent(val)}
           className="h-full text-xs font-mono"
           basicSetup={{
@@ -494,6 +609,20 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ onForceRender, onOpenT
           </button>
         </div>
       </div>
+
+      {/* Duration Multiplier Modal */}
+      {showDurationModal && (
+        <DurationMultiplierModal
+          onClose={() => setShowDurationModal(false)}
+          onApplied={() => {
+            onForceRender();
+            setSelectedSnippet('');
+            setSelectedNoteCount(0);
+          }}
+          selectedTextSnippet={selectedSnippet}
+          onReplaceSelection={handleReplaceSelection}
+        />
+      )}
     </div>
   );
 };

@@ -13,7 +13,7 @@ export const ViolinGuideModal: React.FC<ViolinGuideModalProps> = ({ onClose, aud
   const { activeMaqamId } = useScoreStore();
   const currentMaqam = ARABIC_MAQAMAT.find((m) => m.id === activeMaqamId) || ARABIC_MAQAMAT[0];
 
-  const playPitch = (step: string, octave: number, alter = 0) => {
+  const playPitch = (step: 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B', octave: number, alter = 0) => {
     audioEngine.playSingleNote(step, octave, alter, 0.7);
   };
 
@@ -58,7 +58,7 @@ export const ViolinGuideModal: React.FC<ViolinGuideModalProps> = ({ onClose, aud
               {VIOLIN_OPEN_STRINGS.map((str) => (
                 <div
                   key={str.string}
-                  onClick={() => playPitch(str.pitch[0], parseInt(str.pitch[1], 10), 0)}
+                  onClick={() => playPitch(str.pitch[0] as 'C' | 'D' | 'E' | 'F' | 'G' | 'A' | 'B', parseInt(str.pitch[1], 10), 0)}
                   className="flex flex-col p-3 rounded-lg bg-neutral-950/60 border border-neutral-800 hover:border-amber-500/50 cursor-pointer transition-all hover:bg-neutral-800/40 group"
                 >
                   <div className="flex items-center justify-between text-xs text-neutral-400 mb-1">

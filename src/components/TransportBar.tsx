@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { 
   Play, 
   Pause, 
@@ -12,16 +12,34 @@ import {
   Gauge, 
   FastForward,
   Music2,
-  Activity
+  Activity,
+  Keyboard
 } from 'lucide-react';
 import { useScoreStore } from '../store/useScoreStore';
 import { InstrumentType } from '../types';
+import { ScoreAudioEngine } from '../lib/audioEngine';
+
+interface WebMidiMessageEvent {
+  data: Uint8Array;
+}
+
+interface WebMidiInput {
+  id: string;
+  name?: string;
+  onmidimessage: ((event: WebMidiMessageEvent) => void) | null;
+}
+
+interface WebMidiAccess {
+  inputs: Map<string, WebMidiInput>;
+  onstatechange: (() => void) | null;
+}
 
 interface TransportBarProps {
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
   onSeekPercent: (percent: number) => void;
+  audioEngine?: ScoreAudioEngine;
 }
 
 export const TransportBar: React.FC<TransportBarProps> = ({
@@ -29,6 +47,7 @@ export const TransportBar: React.FC<TransportBarProps> = ({
   onPause,
   onStop,
   onSeekPercent,
+  audioEngine,
 }) => {
   const {
     isPlaying,
@@ -51,6 +70,108 @@ export const TransportBar: React.FC<TransportBarProps> = ({
 
   const [isMuted, setIsMuted] = useState(false);
   const prevVolumeRef = useRef(volume);
+
+  // Web MIDI Devices state
+  const [midiDevices, setMidiDevices] = useState<{ id: string; name: string }[]>([]);
+  const [selectedMidiId, setSelectedMidiId] = useState<string>('none');
+  const [isMidiSupported, setIsMidiSupported] = useState<boolean>(true);
+  const [midiActiveNote, setMidiActiveNote] = useState<number | null>(null);
+  const midiAccessRef = useRef<WebMidiAccess | null>(null);
+  const activeInputsRef = useRef<WebMidiInput[]>([]);
+
+  // Initialize Web MIDI Access
+  const setupMidi = useCallback(async () => {
+    const nav = typeof navigator !== 'undefined' ? (navigator as unknown as { requestMIDIAccess?: () => Promise<WebMidiAccess> }) : null;
+    if (!nav || !nav.requestMIDIAccess) {
+      setIsMidiSupported(false);
+      return;
+    }
+
+    try {
+      const access = await nav.requestMIDIAccess();
+      midiAccessRef.current = access;
+
+      const updateInputs = () => {
+        const inputs: { id: string; name: string }[] = [];
+        access.inputs.forEach((input) => {
+          inputs.push({
+            id: input.id,
+            name: input.name || `MIDI Port ${input.id}`,
+          });
+        });
+        setMidiDevices(inputs);
+        if (inputs.length > 0 && selectedMidiId === 'none') {
+          // If a keyboard was plugged in, provide convenient default
+          setSelectedMidiId('all');
+        }
+      };
+
+      updateInputs();
+      access.onstatechange = () => {
+        updateInputs();
+      };
+    } catch {
+      setIsMidiSupported(false);
+    }
+  }, [selectedMidiId]);
+
+  useEffect(() => {
+    setupMidi();
+  }, [setupMidi]);
+
+  // Handle switching MIDI input port & routing note events to ScoreAudioEngine
+  useEffect(() => {
+    if (!midiAccessRef.current) return;
+
+    // Disconnect previous listeners
+    activeInputsRef.current.forEach((input) => {
+      input.onmidimessage = null;
+    });
+    activeInputsRef.current = [];
+
+    if (selectedMidiId === 'none') {
+      return;
+    }
+
+    const handleMidiMessage = (event: WebMidiMessageEvent) => {
+      const data = event.data;
+      if (!data || data.length < 2) return;
+
+      const command = data[0] & 0xf0;
+      const note = data[1];
+      const velocity = data.length > 2 ? data[2] : 0;
+
+      if (command === 0x90 && velocity > 0) {
+        // Note On
+        audioEngine?.triggerMidiNoteOn(note, velocity);
+        setMidiActiveNote(note);
+      } else if (command === 0x80 || (command === 0x90 && velocity === 0)) {
+        // Note Off
+        audioEngine?.triggerMidiNoteOff(note);
+        setMidiActiveNote((prev) => (prev === note ? null : prev));
+      }
+    };
+
+    if (selectedMidiId === 'all') {
+      midiAccessRef.current.inputs.forEach((input) => {
+        input.onmidimessage = handleMidiMessage;
+        activeInputsRef.current.push(input);
+      });
+    } else {
+      const targetInput = midiAccessRef.current.inputs.get(selectedMidiId);
+      if (targetInput) {
+        targetInput.onmidimessage = handleMidiMessage;
+        activeInputsRef.current.push(targetInput);
+      }
+    }
+
+    return () => {
+      activeInputsRef.current.forEach((input) => {
+        input.onmidimessage = null;
+      });
+      activeInputsRef.current = [];
+    };
+  }, [selectedMidiId, audioEngine]);
 
   // Measure markers computation for scrubber
   const measureMarkers = useMemo(() => {
@@ -124,7 +245,7 @@ export const TransportBar: React.FC<TransportBarProps> = ({
 
   return (
     <div className="w-full bg-neutral-950/95 border-b border-neutral-800/80 px-4 py-2.5 flex flex-col gap-2">
-      {/* Top row: Transport buttons, Tempo, Instrument, Volume */}
+      {/* Top row: Transport buttons, Sound Timbre, MIDI Keyboard, Tempo, Volume */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Playback Primary Controls */}
         <div className="flex items-center gap-2">
@@ -209,31 +330,77 @@ export const TransportBar: React.FC<TransportBarProps> = ({
           )}
         </div>
 
-        {/* Center: Sound Timbre Selector */}
-        <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-lg p-1">
-          {(
-            [
-              { id: 'violin_bowed', label: 'Violin Bowed (كمان)', short: 'Violin' },
-              { id: 'violin_pizz', label: 'Violin Pizz (نقر)', short: 'Pizz' },
-              { id: 'oud', label: 'Arabic Oud (عود)', short: 'Oud' },
-              { id: 'nay_flute', label: 'Nay Flute (ناي)', short: 'Nay' },
-              { id: 'acoustic_grand', label: 'Piano (بيانو)', short: 'Piano' },
-            ] as { id: InstrumentType; label: string; short: string }[]
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setInstrument(item.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                instrument === item.id
-                  ? 'bg-amber-500 text-neutral-950 shadow-sm font-semibold'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+        {/* Center: Sound Timbre Selector & MIDI Keyboard Input */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Sound Timbre */}
+          <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-lg p-1">
+            {(
+              [
+                { id: 'violin_bowed', label: 'Violin Bowed (كمان)', short: 'Violin' },
+                { id: 'violin_pizz', label: 'Violin Pizz (نقر)', short: 'Pizz' },
+                { id: 'oud', label: 'Arabic Oud (عود)', short: 'Oud' },
+                { id: 'nay_flute', label: 'Nay Flute (ناي)', short: 'Nay' },
+                { id: 'acoustic_grand', label: 'Piano (بيانو)', short: 'Piano' },
+              ] as { id: InstrumentType; label: string; short: string }[]
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setInstrument(item.id)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                  instrument === item.id
+                    ? 'bg-amber-500 text-neutral-950 shadow-sm font-semibold'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                }`}
+                title={item.label}
+              >
+                {item.short}
+              </button>
+            ))}
+          </div>
+
+          {/* MIDI Device Selector */}
+          <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-lg px-2 py-1 text-xs">
+            <Keyboard
+              className={`w-3.5 h-3.5 shrink-0 ${
+                midiActiveNote !== null
+                  ? 'text-emerald-400 animate-pulse'
+                  : selectedMidiId !== 'none'
+                  ? 'text-amber-400'
+                  : 'text-neutral-500'
               }`}
-              title={item.label}
-            >
-              {item.short}
-            </button>
-          ))}
+            />
+            <span className="hidden xl:inline text-neutral-400 font-sans">MIDI In:</span>
+            {isMidiSupported ? (
+              <select
+                value={selectedMidiId}
+                onChange={(e) => setSelectedMidiId(e.target.value)}
+                className="bg-transparent text-xs text-neutral-300 focus:outline-none cursor-pointer max-w-[130px] truncate"
+                title="Select connected external MIDI keyboard for live playback"
+              >
+                <option value="none" className="bg-neutral-900 text-neutral-400">
+                  Off
+                </option>
+                {midiDevices.length > 0 && (
+                  <option value="all" className="bg-neutral-900 text-amber-300">
+                    All Inputs ({midiDevices.length})
+                  </option>
+                )}
+                {midiDevices.map((dev) => (
+                  <option key={dev.id} value={dev.id} className="bg-neutral-900 text-neutral-200">
+                    {dev.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-[11px] text-neutral-500 font-sans" title="Web MIDI is not supported in this browser">
+                N/A
+              </span>
+            )}
+            {midiActiveNote !== null && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            )}
+          </div>
         </div>
 
         {/* Right: Tempo controls & Volume */}
